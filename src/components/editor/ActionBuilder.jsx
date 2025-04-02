@@ -1,111 +1,167 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import Button from '../common/Button';
-import { FaPlus, FaTrash, FaArrowUp, FaArrowDown } from 'react-icons/fa';
+import { FaPlus, FaTrash, FaExchangeAlt } from 'react-icons/fa';
 
 /**
- * Komponent budowniczego akcji
+ * Komponent budowniczego warunków
  */
-const ActionBuilder = ({ actions, onUpdate, allScenes }) => {
-  // Typy dostępnych akcji
-  const actionTypes = [
-    { id: 'ADD_ITEM', label: 'Dodaj przedmiot' },
-    { id: 'REMOVE_ITEM', label: 'Usuń przedmiot' },
-    { id: 'SET_FLAG', label: 'Ustaw flagę' },
-    { id: 'TOGGLE_FLAG', label: 'Przełącz flagę' },
-    { id: 'SET_COUNTER', label: 'Ustaw licznik' },
-    { id: 'INCREMENT_COUNTER', label: 'Zwiększ licznik' },
-    { id: 'GO_TO_SCENE', label: 'Przejdź do sceny' },
-    { id: 'PLAY_AUDIO', label: 'Odtwórz dźwięk' },
-    { id: 'STOP_AUDIO', label: 'Zatrzymaj dźwięk' },
-    { id: 'SEQUENCE', label: 'Sekwencja akcji' },
-    { id: 'CONDITIONAL', label: 'Akcja warunkowa' },
-    { id: 'DELAYED', label: 'Akcja opóźniona' },
-    { id: 'SET_ATTRIBUTE', label: 'Ustaw atrybut' },
-    { id: 'MODIFY_ATTRIBUTE', label: 'Modyfikuj atrybut' }
+const ConditionBuilder = ({ condition, onUpdate }) => {
+  // Typy dostępnych warunków
+  const conditionTypes = [
+    { id: 'HAS_ITEM', label: 'Posiadanie przedmiotu' },
+    { id: 'FLAG', label: 'Wartość flagi' },
+    { id: 'COUNTER', label: 'Wartość licznika' },
+    { id: 'AND', label: 'Wszystkie warunki (AND)' },
+    { id: 'OR', label: 'Dowolny warunek (OR)' },
+    { id: 'NOT', label: 'Negacja warunku (NOT)' },
+    { id: 'VISIT_COUNT', label: 'Liczba odwiedzin sceny' },
+    { id: 'HAS_ITEMS_COMBINATION', label: 'Kombinacja przedmiotów' },
+    { id: 'ATTRIBUTE', label: 'Wartość atrybutu' },
+    { id: 'TIME_PASSED', label: 'Czas od zdarzenia' }
   ];
   
-  // Stan dla nowej akcji
-  const [newActionType, setNewActionType] = useState('ADD_ITEM');
+  // Operatory porównywania
+  const comparisonOperators = [
+    { id: '===', label: 'równe (===)' },
+    { id: '!==', label: 'różne (!==)' },
+    { id: '>', label: 'większe (>)' },
+    { id: '>=', label: 'większe/równe (>=)' },
+    { id: '<', label: 'mniejsze (<)' },
+    { id: '<=', label: 'mniejsze/równe (<=)' },
+    { id: 'includes', label: 'zawiera (dla tablic)' }
+  ];
   
-  // Tworzenie nowej akcji na podstawie typu
-  const createNewAction = (type) => {
+  // Stan lokalny dla nowego warunku
+  const [newConditionType, setNewConditionType] = useState('HAS_ITEM');
+  
+  // Utworzenie podstawowego warunku na podstawie wybranego typu
+  const createNewCondition = (type) => {
     switch (type) {
-      case 'ADD_ITEM':
+      case 'HAS_ITEM':
         return { type, itemId: '', quantity: 1 };
-      case 'REMOVE_ITEM':
-        return { type, itemId: '', quantity: 1 };
-      case 'SET_FLAG':
-        return { type, flagName: '', value: true };
-      case 'TOGGLE_FLAG':
-        return { type, flagName: '' };
-      case 'SET_COUNTER':
-        return { type, counterName: '', value: 0 };
-      case 'INCREMENT_COUNTER':
-        return { type, counterName: '', increment: 1 };
-      case 'GO_TO_SCENE':
-        return { type, sceneId: '' };
-      case 'PLAY_AUDIO':
-        return { type, audioId: '', volume: 1, loop: false };
-      case 'STOP_AUDIO':
-        return { type, audioId: '' };
-      case 'SEQUENCE':
-        return { type, actions: [] };
-      case 'CONDITIONAL':
-        return { type, condition: null, thenActions: [], elseActions: [] };
-      case 'DELAYED':
-        return { type, action: null, delay: 1000 };
-      case 'SET_ATTRIBUTE':
-        return { type, attributeName: '', value: 0 };
-      case 'MODIFY_ATTRIBUTE':
-        return { type, attributeName: '', delta: 0 };
+      case 'FLAG':
+        return { type, flagName: '', operator: '===', value: true };
+      case 'COUNTER':
+        return { type, counterName: '', operator: '>', value: 0 };
+      case 'AND':
+      case 'OR':
+        return { type, conditions: [] };
+      case 'NOT':
+        return { type, condition: null };
+      case 'VISIT_COUNT':
+        return { type, sceneId: '', operator: '>=', value: 1 };
+      case 'HAS_ITEMS_COMBINATION':
+        return { type, items: [] };
+      case 'ATTRIBUTE':
+        return { type, attributeName: '', operator: '>=', value: 0 };
+      case 'TIME_PASSED':
+        return { type, id: `time_${Date.now()}`, milliseconds: 5000 };
       default:
-        return { type: 'ADD_ITEM', itemId: '', quantity: 1 };
+        return { type: 'HAS_ITEM', itemId: '', quantity: 1 };
     }
   };
   
-  // Dodawanie nowej akcji
-  const handleAddAction = () => {
-    onUpdate([...actions, createNewAction(newActionType)]);
-  };
-  
-  // Aktualizacja istniejącej akcji
-  const handleUpdateAction = (index, updatedAction) => {
-    const updatedActions = [...actions];
-    updatedActions[index] = updatedAction;
-    onUpdate(updatedActions);
-  };
-  
-  // Usuwanie akcji
-  const handleRemoveAction = (index) => {
-    const updatedActions = [...actions];
-    updatedActions.splice(index, 1);
-    onUpdate(updatedActions);
-  };
-  
-  // Zmiana kolejności akcji
-  const handleMoveAction = (index, direction) => {
-    if (
-      (direction === 'up' && index === 0) || 
-      (direction === 'down' && index === actions.length - 1)
-    ) {
-      return;
+  // Inicjalizacja warunku jeśli nie istnieje
+  useEffect(() => {
+    if (!condition) {
+      onUpdate(createNewCondition(newConditionType));
     }
-    
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-    const updatedActions = [...actions];
-    
-    [updatedActions[index], updatedActions[newIndex]] = 
-      [updatedActions[newIndex], updatedActions[index]];
-    
-    onUpdate(updatedActions);
+  }, []);
+  
+  // Obsługa zmiany typu warunku
+  const handleTypeChange = (e) => {
+    const newType = e.target.value;
+    onUpdate(createNewCondition(newType));
+    setNewConditionType(newType);
   };
   
-  // Renderowanie formularza dla konkretnej akcji
-  const renderActionForm = (action, index) => {
-    switch (action.type) {
-      case 'ADD_ITEM':
-      case 'REMOVE_ITEM':
+  // Obsługa zmiany pola warunku
+  const handleFieldChange = (field, value) => {
+    onUpdate({
+      ...condition,
+      [field]: value
+    });
+  };
+  
+  // Dodanie podwarunku do warunku złożonego
+  const handleAddSubcondition = () => {
+    if (condition.type === 'AND' || condition.type === 'OR') {
+      onUpdate({
+        ...condition,
+        conditions: [...condition.conditions, createNewCondition('HAS_ITEM')]
+      });
+    } else if (condition.type === 'NOT' && !condition.condition) {
+      onUpdate({
+        ...condition,
+        condition: createNewCondition('HAS_ITEM')
+      });
+    } else if (condition.type === 'HAS_ITEMS_COMBINATION') {
+      onUpdate({
+        ...condition,
+        items: [...condition.items, { id: '', quantity: 1 }]
+      });
+    }
+  };
+  
+  // Aktualizacja podwarunku w warunku złożonym
+  const handleUpdateSubcondition = (index, updatedCondition) => {
+    if (condition.type === 'AND' || condition.type === 'OR') {
+      const updatedConditions = [...condition.conditions];
+      updatedConditions[index] = updatedCondition;
+      
+      onUpdate({
+        ...condition,
+        conditions: updatedConditions
+      });
+    } else if (condition.type === 'NOT') {
+      onUpdate({
+        ...condition,
+        condition: updatedCondition
+      });
+    } else if (condition.type === 'HAS_ITEMS_COMBINATION') {
+      const updatedItems = [...condition.items];
+      updatedItems[index] = updatedCondition;
+      
+      onUpdate({
+        ...condition,
+        items: updatedItems
+      });
+    }
+  };
+  
+  // Usunięcie podwarunku z warunku złożonego
+  const handleRemoveSubcondition = (index) => {
+    if (condition.type === 'AND' || condition.type === 'OR') {
+      const updatedConditions = [...condition.conditions];
+      updatedConditions.splice(index, 1);
+      
+      onUpdate({
+        ...condition,
+        conditions: updatedConditions
+      });
+    } else if (condition.type === 'NOT') {
+      onUpdate({
+        ...condition,
+        condition: null
+      });
+    } else if (condition.type === 'HAS_ITEMS_COMBINATION') {
+      const updatedItems = [...condition.items];
+      updatedItems.splice(index, 1);
+      
+      onUpdate({
+        ...condition,
+        items: updatedItems
+      });
+    }
+  };
+  
+  // Renderowanie formularza w zależności od typu warunku
+  const renderConditionForm = () => {
+    if (!condition) return null;
+    
+    switch (condition.type) {
+      case 'HAS_ITEM':
         return (
           <div className="space-y-2">
             <div>
@@ -114,20 +170,20 @@ const ActionBuilder = ({ actions, onUpdate, allScenes }) => {
               </label>
               <input
                 type="text"
-                value={action.itemId || ''}
-                onChange={(e) => handleUpdateAction(index, { ...action, itemId: e.target.value })}
+                value={condition.itemId || ''}
+                onChange={(e) => handleFieldChange('itemId', e.target.value)}
                 className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 placeholder="np. klucz_do_piwnicy"
               />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1 dark:text-gray-300">
-                Ilość:
+                Wymagana ilość:
               </label>
               <input
                 type="number"
-                value={action.quantity || 1}
-                onChange={(e) => handleUpdateAction(index, { ...action, quantity: parseInt(e.target.value) || 1 })}
+                value={condition.quantity || 1}
+                onChange={(e) => handleFieldChange('quantity', parseInt(e.target.value) || 1)}
                 min="1"
                 className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               />
@@ -135,7 +191,7 @@ const ActionBuilder = ({ actions, onUpdate, allScenes }) => {
           </div>
         );
         
-      case 'SET_FLAG':
+      case 'FLAG':
         return (
           <div className="space-y-2">
             <div>
@@ -144,11 +200,25 @@ const ActionBuilder = ({ actions, onUpdate, allScenes }) => {
               </label>
               <input
                 type="text"
-                value={action.flagName || ''}
-                onChange={(e) => handleUpdateAction(index, { ...action, flagName: e.target.value })}
+                value={condition.flagName || ''}
+                onChange={(e) => handleFieldChange('flagName', e.target.value)}
                 className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 placeholder="np. spotkany_npc_jan"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 dark:text-gray-300">
+                Operator:
+              </label>
+              <select
+                value={condition.operator || '==='}
+                onChange={(e) => handleFieldChange('operator', e.target.value)}
+                className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              >
+                {comparisonOperators.map(op => (
+                  <option key={op.id} value={op.id}>{op.label}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1 dark:text-gray-300">
@@ -156,7 +226,7 @@ const ActionBuilder = ({ actions, onUpdate, allScenes }) => {
               </label>
               <div className="flex items-center">
                 <select
-                  value={typeof action.value}
+                  value={typeof condition.value}
                   onChange={(e) => {
                     const type = e.target.value;
                     let newValue;
@@ -175,7 +245,7 @@ const ActionBuilder = ({ actions, onUpdate, allScenes }) => {
                         newValue = true;
                     }
                     
-                    handleUpdateAction(index, { ...action, value: newValue });
+                    handleFieldChange('value', newValue);
                   }}
                   className="px-2 py-1 border rounded mr-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 >
@@ -184,27 +254,27 @@ const ActionBuilder = ({ actions, onUpdate, allScenes }) => {
                   <option value="string">Tekst</option>
                 </select>
                 
-                {typeof action.value === 'boolean' ? (
+                {typeof condition.value === 'boolean' ? (
                   <select
-                    value={action.value.toString()}
-                    onChange={(e) => handleUpdateAction(index, { ...action, value: e.target.value === 'true' })}
+                    value={condition.value.toString()}
+                    onChange={(e) => handleFieldChange('value', e.target.value === 'true')}
                     className="flex-1 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   >
                     <option value="true">Prawda</option>
                     <option value="false">Fałsz</option>
                   </select>
-                ) : typeof action.value === 'number' ? (
+                ) : typeof condition.value === 'number' ? (
                   <input
                     type="number"
-                    value={action.value}
-                    onChange={(e) => handleUpdateAction(index, { ...action, value: parseFloat(e.target.value) || 0 })}
+                    value={condition.value}
+                    onChange={(e) => handleFieldChange('value', parseFloat(e.target.value) || 0)}
                     className="flex-1 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   />
                 ) : (
                   <input
                     type="text"
-                    value={action.value || ''}
-                    onChange={(e) => handleUpdateAction(index, { ...action, value: e.target.value })}
+                    value={condition.value || ''}
+                    onChange={(e) => handleFieldChange('value', e.target.value)}
                     className="flex-1 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   />
                 )}
@@ -213,26 +283,7 @@ const ActionBuilder = ({ actions, onUpdate, allScenes }) => {
           </div>
         );
         
-      case 'TOGGLE_FLAG':
-        return (
-          <div>
-            <label className="block text-sm font-medium mb-1 dark:text-gray-300">
-              Nazwa flagi:
-            </label>
-            <input
-              type="text"
-              value={action.flagName || ''}
-              onChange={(e) => handleUpdateAction(index, { ...action, flagName: e.target.value })}
-              className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              placeholder="np. lampa_wlaczona"
-            />
-            <p className="text-xs text-gray-500 mt-1 dark:text-gray-400">
-              Przełącza wartość flagi między true i false
-            </p>
-          </div>
-        );
-        
-      case 'SET_COUNTER':
+      case 'COUNTER':
         return (
           <div className="space-y-2">
             <div>
@@ -241,11 +292,25 @@ const ActionBuilder = ({ actions, onUpdate, allScenes }) => {
               </label>
               <input
                 type="text"
-                value={action.counterName || ''}
-                onChange={(e) => handleUpdateAction(index, { ...action, counterName: e.target.value })}
+                value={condition.counterName || ''}
+                onChange={(e) => handleFieldChange('counterName', e.target.value)}
                 className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                placeholder="np. liczba_prob"
+                placeholder="np. liczba_zabojstw"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 dark:text-gray-300">
+                Operator:
+              </label>
+              <select
+                value={condition.operator || '>'}
+                onChange={(e) => handleFieldChange('operator', e.target.value)}
+                className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              >
+                {comparisonOperators.slice(0, 6).map(op => (
+                  <option key={op.id} value={op.id}>{op.label}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1 dark:text-gray-300">
@@ -253,129 +318,199 @@ const ActionBuilder = ({ actions, onUpdate, allScenes }) => {
               </label>
               <input
                 type="number"
-                value={action.value || 0}
-                onChange={(e) => handleUpdateAction(index, { ...action, value: parseInt(e.target.value) || 0 })}
+                value={condition.value || 0}
+                onChange={(e) => handleFieldChange('value', parseInt(e.target.value) || 0)}
                 className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               />
             </div>
           </div>
         );
         
-      case 'INCREMENT_COUNTER':
+      case 'AND':
+      case 'OR':
+        return (
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <h3 className="font-medium dark:text-gray-300">
+                {condition.type === 'AND' ? 'Wszystkie warunki muszą być spełnione' : 'Dowolny z warunków musi być spełniony'}
+              </h3>
+              <Button
+                label="Dodaj warunek"
+                onClick={handleAddSubcondition}
+                variant="secondary"
+                small
+                icon={<FaPlus />}
+              />
+            </div>
+            
+            {condition.conditions.length === 0 ? (
+              <div className="p-2 bg-yellow-50 text-sm rounded dark:bg-yellow-900 dark:text-yellow-100">
+                Brak warunków. Dodaj co najmniej jeden.
+              </div>
+            ) : (
+              <div className="space-y-3 pl-3 border-l-2 border-blue-300 dark:border-blue-700">
+                {condition.conditions.map((subcondition, index) => (
+                  <div key={index} className="p-3 bg-gray-50 rounded border dark:bg-gray-900 dark:border-gray-700">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="font-medium text-sm dark:text-gray-300">
+                        Warunek #{index + 1}
+                      </h4>
+                      <button
+                        onClick={() => handleRemoveSubcondition(index)}
+                        className="p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+                    <ConditionBuilder
+                      condition={subcondition}
+                      onUpdate={(updatedCondition) => handleUpdateSubcondition(index, updatedCondition)}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+        
+      case 'NOT':
+        return (
+          <div className="space-y-3">
+            <h3 className="font-medium dark:text-gray-300">
+              Negacja warunku (warunek NIE jest spełniony)
+            </h3>
+            
+            {condition.condition ? (
+              <div className="p-3 bg-gray-50 rounded border dark:bg-gray-900 dark:border-gray-700">
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="font-medium text-sm dark:text-gray-300">
+                    Negowany warunek
+                  </h4>
+                  <button
+                    onClick={() => handleRemoveSubcondition(0)}
+                    className="p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                  >
+                    <FaTrash />
+                  </button>
+                </div>
+                <ConditionBuilder
+                  condition={condition.condition}
+                  onUpdate={(updatedCondition) => handleUpdateSubcondition(0, updatedCondition)}
+                />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center">
+                <p className="text-sm text-gray-500 mb-2 dark:text-gray-400">
+                  Brak warunku do zanegowania
+                </p>
+                <Button
+                  label="Dodaj warunek do zanegowania"
+                  onClick={handleAddSubcondition}
+                  variant="secondary"
+                  small
+                  icon={<FaPlus />}
+                />
+              </div>
+            )}
+          </div>
+        );
+        
+      case 'VISIT_COUNT':
         return (
           <div className="space-y-2">
             <div>
               <label className="block text-sm font-medium mb-1 dark:text-gray-300">
-                Nazwa licznika:
+                ID sceny:
               </label>
               <input
                 type="text"
-                value={action.counterName || ''}
-                onChange={(e) => handleUpdateAction(index, { ...action, counterName: e.target.value })}
+                value={condition.sceneId || ''}
+                onChange={(e) => handleFieldChange('sceneId', e.target.value)}
                 className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                placeholder="np. liczba_prob"
+                placeholder="np. scene_1"
               />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1 dark:text-gray-300">
-                Zwiększ o:
+                Operator:
+              </label>
+              <select
+                value={condition.operator || '>='}
+                onChange={(e) => handleFieldChange('operator', e.target.value)}
+                className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              >
+                {comparisonOperators.slice(0, 6).map(op => (
+                  <option key={op.id} value={op.id}>{op.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 dark:text-gray-300">
+                Liczba odwiedzin:
               </label>
               <input
                 type="number"
-                value={action.increment || 1}
-                onChange={(e) => handleUpdateAction(index, { ...action, increment: parseInt(e.target.value) || 1 })}
+                value={condition.value || 1}
+                onChange={(e) => handleFieldChange('value', parseInt(e.target.value) || 1)}
+                min="1"
                 className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               />
-              <p className="text-xs text-gray-500 mt-1 dark:text-gray-400">
-                Możesz użyć wartości ujemnej, aby zmniejszyć licznik
-              </p>
             </div>
           </div>
         );
         
-      case 'GO_TO_SCENE':
+      case 'HAS_ITEMS_COMBINATION':
         return (
-          <div>
-            <label className="block text-sm font-medium mb-1 dark:text-gray-300">
-              Przejdź do sceny:
-            </label>
-            <select
-              value={action.sceneId || ''}
-              onChange={(e) => handleUpdateAction(index, { ...action, sceneId: e.target.value })}
-              className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
-              <option value="">-- Wybierz scenę --</option>
-              {Object.entries(allScenes).map(([id, scene]) => (
-                <option key={id} value={id}>
-                  {scene.title} ({id})
-                </option>
-              ))}
-            </select>
-          </div>
-        );
-        
-      case 'PLAY_AUDIO':
-        return (
-          <div className="space-y-2">
-            <div>
-              <label className="block text-sm font-medium mb-1 dark:text-gray-300">
-                ID dźwięku:
-              </label>
-              <input
-                type="text"
-                value={action.audioId || ''}
-                onChange={(e) => handleUpdateAction(index, { ...action, audioId: e.target.value })}
-                className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                placeholder="np. door_open"
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <h3 className="font-medium dark:text-gray-300">
+                Posiadanie kombinacji przedmiotów
+              </h3>
+              <Button
+                label="Dodaj przedmiot"
+                onClick={handleAddSubcondition}
+                variant="secondary"
+                small
+                icon={<FaPlus />}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1 dark:text-gray-300">
-                Głośność (0-1):
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.1"
-                value={action.volume || 1}
-                onChange={(e) => handleUpdateAction(index, { ...action, volume: parseFloat(e.target.value) })}
-                className="w-full"
-              />
-              <div className="text-right text-sm">{action.volume || 1}</div>
-            </div>
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id={`loop-${index}`}
-                checked={action.loop || false}
-                onChange={(e) => handleUpdateAction(index, { ...action, loop: e.target.checked })}
-                className="mr-2"
-              />
-              <label htmlFor={`loop-${index}`} className="text-sm dark:text-gray-300">
-                Zapętlij dźwięk
-              </label>
-            </div>
+            
+            {condition.items.length === 0 ? (
+              <div className="p-2 bg-yellow-50 text-sm rounded dark:bg-yellow-900 dark:text-yellow-100">
+                Brak przedmiotów. Dodaj co najmniej jeden.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {condition.items.map((item, index) => (
+                  <div key={index} className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      value={item.id || ''}
+                      onChange={(e) => handleUpdateSubcondition(index, { ...item, id: e.target.value })}
+                      className="flex-1 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      placeholder="ID przedmiotu"
+                    />
+                    <input
+                      type="number"
+                      value={item.quantity || 1}
+                      onChange={(e) => handleUpdateSubcondition(index, { ...item, quantity: parseInt(e.target.value) || 1 })}
+                      min="1"
+                      className="w-20 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    />
+                    <button
+                      onClick={() => handleRemoveSubcondition(index)}
+                      className="p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                    >
+                      <FaTrash size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         );
         
-      case 'STOP_AUDIO':
-        return (
-          <div>
-            <label className="block text-sm font-medium mb-1 dark:text-gray-300">
-              ID dźwięku:
-            </label>
-            <input
-              type="text"
-              value={action.audioId || ''}
-              onChange={(e) => handleUpdateAction(index, { ...action, audioId: e.target.value })}
-              className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              placeholder="np. background_music"
-            />
-          </div>
-        );
-        
-      case 'SET_ATTRIBUTE':
+      case 'ATTRIBUTE':
         return (
           <div className="space-y-2">
             <div>
@@ -384,11 +519,25 @@ const ActionBuilder = ({ actions, onUpdate, allScenes }) => {
               </label>
               <input
                 type="text"
-                value={action.attributeName || ''}
-                onChange={(e) => handleUpdateAction(index, { ...action, attributeName: e.target.value })}
+                value={condition.attributeName || ''}
+                onChange={(e) => handleFieldChange('attributeName', e.target.value)}
                 className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                placeholder="np. sila, zrecznosc"
+                placeholder="np. sila, zrecznosc, inteligencja"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 dark:text-gray-300">
+                Operator:
+              </label>
+              <select
+                value={condition.operator || '>='}
+                onChange={(e) => handleFieldChange('operator', e.target.value)}
+                className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              >
+                {comparisonOperators.slice(0, 6).map(op => (
+                  <option key={op.id} value={op.id}>{op.label}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1 dark:text-gray-300">
@@ -396,190 +545,91 @@ const ActionBuilder = ({ actions, onUpdate, allScenes }) => {
               </label>
               <input
                 type="number"
-                value={action.value || 0}
-                onChange={(e) => handleUpdateAction(index, { ...action, value: parseInt(e.target.value) || 0 })}
+                value={condition.value || 0}
+                onChange={(e) => handleFieldChange('value', parseInt(e.target.value) || 0)}
                 className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               />
             </div>
           </div>
         );
         
-      case 'MODIFY_ATTRIBUTE':
+      case 'TIME_PASSED':
         return (
           <div className="space-y-2">
             <div>
               <label className="block text-sm font-medium mb-1 dark:text-gray-300">
-                Nazwa atrybutu:
+                Identyfikator warunku:
               </label>
               <input
                 type="text"
-                value={action.attributeName || ''}
-                onChange={(e) => handleUpdateAction(index, { ...action, attributeName: e.target.value })}
+                value={condition.id || `time_${Date.now()}`}
+                onChange={(e) => handleFieldChange('id', e.target.value)}
                 className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                placeholder="np. sila, zrecznosc"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1 dark:text-gray-300">
-                Zmiana:
-              </label>
-              <input
-                type="number"
-                value={action.delta || 0}
-                onChange={(e) => handleUpdateAction(index, { ...action, delta: parseInt(e.target.value) || 0 })}
-                className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="np. time_since_npc_talk"
               />
               <p className="text-xs text-gray-500 mt-1 dark:text-gray-400">
-                Wartość dodatnia zwiększa, ujemna zmniejsza
-              </p>
-            </div>
-          </div>
-        );
-      
-      // Dla bardziej złożonych akcji jak SEQUENCE, CONDITIONAL i DELAYED
-      // moglibyśmy zaimplementować zagnieżdżone edytory, ale dla uproszczenia
-      // dodajemy tylko podstawowe informacje
-        
-      case 'SEQUENCE':
-        return (
-          <div className="bg-yellow-50 p-2 rounded text-sm dark:bg-yellow-900 dark:text-yellow-100">
-            <p>
-              Sekwencja akcji - złożona akcja zawierająca wiele innych akcji.
-              Implementacja pełnego edytora sekwencji wykracza poza zakres tego przykładu.
-            </p>
-          </div>
-        );
-        
-      case 'CONDITIONAL':
-        return (
-          <div className="bg-yellow-50 p-2 rounded text-sm dark:bg-yellow-900 dark:text-yellow-100">
-            <p>
-              Akcja warunkowa - wykonuje różne akcje w zależności od spełnienia warunku.
-              Implementacja pełnego edytora warunkowego wykracza poza zakres tego przykładu.
-            </p>
-          </div>
-        );
-        
-      case 'DELAYED':
-        return (
-          <div className="space-y-2">
-            <div className="bg-yellow-50 p-2 rounded text-sm dark:bg-yellow-900 dark:text-yellow-100">
-              <p>
-                Akcja opóźniona - wykonuje akcję po określonym czasie.
-                Implementacja pełnego edytora akcji opóźnionej wykracza poza zakres tego przykładu.
+                Unikalny identyfikator używany do śledzenia czasu
               </p>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1 dark:text-gray-300">
-                Opóźnienie (ms):
+                Czas w milisekundach:
               </label>
               <input
                 type="number"
-                value={action.delay || 1000}
-                onChange={(e) => handleUpdateAction(index, { ...action, delay: parseInt(e.target.value) || 1000 })}
-                min="100"
-                step="100"
+                value={condition.milliseconds || 5000}
+                onChange={(e) => handleFieldChange('milliseconds', parseInt(e.target.value) || 5000)}
+                min="1000"
+                step="1000"
                 className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               />
               <div className="text-xs text-gray-500 mt-1 flex justify-between dark:text-gray-400">
-                <span>{(action.delay / 1000).toFixed(1)} sekund</span>
+                <span>{(condition.milliseconds / 1000).toFixed(1)} sekund</span>
+                <span>{(condition.milliseconds / 60000).toFixed(1)} minut</span>
               </div>
             </div>
           </div>
         );
         
       default:
-        return <p>Nieznany typ akcji: {action.type}</p>;
+        return <p>Nieznany typ warunku: {condition.type}</p>;
     }
   };
-
+  
+  // Główny komponent
   return (
     <div className="space-y-4">
-      <div className="flex items-end space-x-2">
-        <div className="flex-1">
-          <label className="block text-sm font-medium mb-1 dark:text-gray-300">
-            Dodaj nową akcję:
-          </label>
-          <select
-            value={newActionType}
-            onChange={(e) => setNewActionType(e.target.value)}
-            className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          >
-            {actionTypes.map(type => (
-              <option key={type.id} value={type.id}>{type.label}</option>
-            ))}
-          </select>
-        </div>
-        <Button
-          label="Dodaj"
-          onClick={handleAddAction}
-          variant="secondary"
-          icon={<FaPlus />}
-        />
+      <div>
+        <label className="block text-sm font-medium mb-1 dark:text-gray-300">
+          Typ warunku:
+        </label>
+        <select
+          value={condition?.type || newConditionType}
+          onChange={handleTypeChange}
+          className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+        >
+          {conditionTypes.map(type => (
+            <option key={type.id} value={type.id}>{type.label}</option>
+          ))}
+        </select>
       </div>
       
-      {actions.length === 0 ? (
-        <div className="p-3 bg-gray-50 text-center rounded border dark:bg-gray-900 dark:border-gray-700 dark:text-gray-300">
-          Brak zdefiniowanych akcji. Dodaj pierwszą akcję powyżej.
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {actions.map((action, index) => (
-            <div key={index} className="p-3 bg-white rounded border shadow-sm dark:bg-gray-800 dark:border-gray-700">
-              <div className="flex justify-between items-center mb-2">
-                <div className="flex items-center">
-                  <span className="mr-2 text-gray-500 dark:text-gray-400">#{index + 1}</span>
-                  <h4 className="font-medium text-sm dark:text-gray-300">
-                    {actionTypes.find(t => t.id === action.type)?.label || action.type}
-                  </h4>
-                </div>
-                <div className="flex space-x-1">
-                  <button
-                    onClick={() => handleMoveAction(index, 'up')}
-                    disabled={index === 0}
-                    className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed dark:text-gray-400 dark:hover:text-gray-300"
-                  >
-                    <FaArrowUp size={12} />
-                  </button>
-                  <button
-                    onClick={() => handleMoveAction(index, 'down')}
-                    disabled={index === actions.length - 1}
-                    className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed dark:text-gray-400 dark:hover:text-gray-300"
-                  >
-                    <FaArrowDown size={12} />
-                  </button>
-                  <button
-                    onClick={() => handleRemoveAction(index)}
-                    className="p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                  >
-                    <FaTrash size={12} />
-                  </button>
-                </div>
-              </div>
-              
-              {renderActionForm(action, index)}
-            </div>
-          ))}
-        </div>
-      )}
+      {renderConditionForm()}
       
-      {actions.length > 0 && (
-        <div className="text-sm bg-blue-50 p-2 rounded dark:bg-blue-900 dark:text-blue-100">
-          <h4 className="font-medium">Kolejność wykonywania</h4>
-          <p>
-            Akcje są wykonywane w kolejności od góry do dołu. 
-            Możesz zmienić kolejność używając strzałek przy każdej akcji.
-          </p>
-        </div>
-      )}
+      <div className="text-sm bg-blue-50 p-2 rounded dark:bg-blue-900 dark:text-blue-100">
+        <h4 className="font-medium">Jak działają warunki?</h4>
+        <p>
+          Warunki określają, kiedy opcja wyboru jest dostępna dla gracza. 
+          Jeśli warunek nie jest spełniony, gracz nie zobaczy tego wyboru.
+        </p>
+      </div>
     </div>
   );
 };
 
-ActionBuilder.propTypes = {
-  actions: PropTypes.array.isRequired,
-  onUpdate: PropTypes.func.isRequired,
-  allScenes: PropTypes.object.isRequired
+ConditionBuilder.propTypes = {
+  condition: PropTypes.object,
+  onUpdate: PropTypes.func.isRequired
 };
 
-export default ActionBuilder;
+export default ConditionBuilder;
